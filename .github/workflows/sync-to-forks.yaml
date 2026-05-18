@@ -1,0 +1,30 @@
+name: sync_to_forks
+
+on:
+  push:
+    branches:
+      - develop
+      - rrfs-mpas-jedi
+
+jobs:
+  sync_to_forks:
+    if: github.repository == 'AR-PS/wx-workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wx-workflow
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Push to ar-workflow
+        run: |
+          git remote add ar https://x-access-token:${{ secrets.DOWNSTREAM_TOKEN }}@github.com/AR-PS/ar-workflow.git
+          git push --force ar HEAD:${{ github.ref_name }}
+          git remote add rtma https://x-access-token:${{ secrets.DOWNSTREAM_TOKEN }}@github.com/RRFSx/rtma-workflow.git
+          git push --force rtma HEAD:${{ github.ref_name }}
