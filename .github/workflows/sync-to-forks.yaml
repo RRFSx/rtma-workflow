@@ -25,6 +25,7 @@ jobs:
       - name: Push to ar-workflow
         run: |
           git remote add ar https://x-access-token:${{ secrets.DOWNSTREAM_TOKEN }}@github.com/AR-PS/ar-workflow.git
-          git push --force ar HEAD:${{ github.ref_name }}
           git remote add rtma https://x-access-token:${{ secrets.DOWNSTREAM_TOKEN }}@github.com/RRFSx/rtma-workflow.git
-          git push --force rtma HEAD:${{ github.ref_name }}
+          git fetch origin develop rrfs-mpas-jedi
+          git push --force ar origin/develop:develop origin/rrfs-mpas-jedi:rrfs-mpas-jedi
+          git push --force rtma origin/develop:develop origin/rrfs-mpas-jedi:rrfs-mpas-jedi
