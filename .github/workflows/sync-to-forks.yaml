@@ -8,7 +8,7 @@ on:
 
 jobs:
   sync_to_forks:
-    if: github.repository == 'AR-PS/wx-workflow'
+    if: github.repository == 'wx-workflow/wx-workflow'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout wx-workflow
