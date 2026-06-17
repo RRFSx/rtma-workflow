@@ -52,6 +52,7 @@ if [[ "${DO_RTMA^^}" == "TRUE" ]]; then
   run_duration="00:00:${FCST_DT}"
 fi
 physics_suite=${PHYSICS_SUITE:-'mesoscale_reference'}
+lsm_scheme=${LSM_SCHEME:-'sf_ruc'}
 jedi_da=true #true
 
 pio_num_iotasks=${NODES}

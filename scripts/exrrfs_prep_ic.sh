@@ -105,52 +105,54 @@ for index in "${mem_list[@]}"; do # loop through all the members
   # do sfc cycling if no global blending
   #
   if [[ "${DO_BLENDING^^}" == "FALSE" ]]; then
-    for hr in ${SFC_UPDATE_CYCS:-"99"}; do
-      shr=$(printf '%02d' $((10#$hr)) )
-      if [[ "${cyc}" == "${shr}" ]]; then
-        source_file=""
-        # look back ${NUM} cycles to find mpasout files for surface cycling
-        NUM=27
-        for (( ii=cyc_interval; ii<=$(( NUM*cyc_interval )); ii=ii+cyc_interval )); do
-          CDATEp=$(${NDATE} -${ii} "${CDATE}" )
-          PDYii=${CDATEp:0:8}
-          cycii=${CDATEp:8:2}
-          file_mpasout="${COMINsfc}/${RUN}.${PDYii}/${cycii}/fcst/${WGF}${memdir}/mpasout.${timestr}.nc"
-          if [[ -s "${file_mpasout}" ]]; then
-            source_file="${file_mpasout}"
-            var_list="smois,snow,snowh,snowc,sst,canwat,tslb,skintemp,isltyp,ivgtyp,soilt1,sh2o"
-            break
-          fi
-        done
-        # if no mpasout files, use init.nc from another run
-        if [[ ! -s "${source_file}" ]]; then
-          if [[  "${COMINsfc}" == "${COMINrrfs}" ]]; then
-            echo "SFC_UPDATE: ${COMINsfc} = ${COMINrrfs}, same init.nc,  skip sfc_update!"
-          else
-            PDYii=${CDATE:0:8}
-            cycii=${CDATE:8:2}
-            file_init="${COMINsfc}/${RUN}.${PDYii}/${cycii}/ic/${WGF}${memdir}/init.nc"
-            if [[ -s "${file_init}" ]]; then
-              source_file="${file_init}"
-              var_list="smois,snow,snowh,snowc,sst,canwat,tslb,skintemp,isltyp,ivgtyp"
+    if [[ "${DO_SFC_UPDATE}" == "TRUE" ]]; then
+      for hr in ${COLDSTART_CYCS:-"99"}; do
+        shr=$(printf '%02d' $((10#$hr)) )
+        if [[ "${cyc}" == "${shr}" ]]; then
+          source_file=""
+          # look back ${NUM} cycles to find mpasout files for surface cycling
+          NUM=3
+          for (( ii=cyc_interval; ii<=$(( NUM*cyc_interval )); ii=ii+cyc_interval )); do
+            CDATEp=$(${NDATE} -${ii} "${CDATE}" )
+            PDYii=${CDATEp:0:8}
+            cycii=${CDATEp:8:2}
+            file_mpasout="${COMINsfc}/${RUN}.${PDYii}/${cycii}/fcst/${WGF}${memdir}/mpasout.${timestr}.nc"
+            if [[ -s "${file_mpasout}" ]]; then
+              source_file="${file_mpasout}"
+              var_list="smois,snow,snowh,snowc,sst,canwat,tslb,skintemp,isltyp,ivgtyp,soilt1,sh2o"
+              break
+            fi
+          done
+          # if no mpasout files, use init.nc from another run
+          if [[ ! -s "${source_file}" ]]; then
+            if [[  "${COMINsfc}" == "${COMINrrfs}" ]]; then
+              echo "SFC_UPDATE: ${COMINsfc} = ${COMINrrfs}, same init.nc,  skip sfc_update!"
+            else
+              PDYii=${CDATE:0:8}
+              cycii=${CDATE:8:2}
+              file_init="${COMINsfc}/${RUN}.${PDYii}/${cycii}/ic/${WGF}${memdir}/init.nc"
+              if [[ -s "${file_init}" ]]; then
+                source_file="${file_init}"
+                var_list="smois,snow,snowh,snowc,sst,canwat,tslb,skintemp,isltyp,ivgtyp"
+              fi
             fi
           fi
-        fi
-        #
-        to_file=""
-        if [[ -s "${source_file}" ]]; then
-          if [[ "${START_TYPE}" == "cold" ]]; then
-            to_file="${umbrella_prep_ic_mem}/init.nc"
-          elif [[ "${START_TYPE}" == "warm" ]]; then
-            to_file="${umbrella_prep_ic_mem}/mpasout.nc"
+          #
+          to_file=""
+          if [[ -s "${source_file}" ]]; then
+            if [[ "${START_TYPE}" == "cold" ]]; then
+              to_file="${umbrella_prep_ic_mem}/init.nc"
+            elif [[ "${START_TYPE}" == "warm" ]]; then
+              to_file="${umbrella_prep_ic_mem}/mpasout.nc"
+            fi
+            echo "surface update from ${source_file} to ${to_file}"
+            echo ncks -A -v  "${var_list}"  "${source_file}"  "${to_file}" >>  "${CMDFILE}"
+          else
+            echo "SFC_UPDATE failed, cannot find source file for sfc state: ${source_file}"
           fi
-          echo "surface update from ${source_file} to ${to_file}"
-          echo ncks -A -v  "${var_list}"  "${source_file}"  "${to_file}" >>  "${CMDFILE}"
-        else
-          echo "SFC_UPDATE failed, cannot find source file for sfc state: ${source_file}"
-        fi
-      fi
-    done
+       fi
+      done
+    fi
   fi
   #
   #  find the right satbias file
@@ -198,6 +200,47 @@ if (( err != 0 )); then
   echo "prep_ic failed with error code ${err}"
   err_exit
 else
+
+# update SST
+if (( "${ENS_SIZE:-0}" < 2 )); then
+  for hr in ${SST_UPDATE_CYCS:-"99"}; do
+     chr=$(printf '%02d' $((10#$hr)) )
+     if [[ "${cyc}" == "${chr}" ]]; then
+       echo "update SST at cycle ${cyc}"
+       ln -s "${FIXrrfs}/sst/RTG_SST_landmask.dat" .
+       ln -s "${FIXrrfs}/sst/${MESH_NAME}.mpas_lake_mask.nc" mpas_lake_mask.nc
+       ln -s "${FIXrrfs}/conus3km/${MESH_NAME}.static.nc" static.nc
+       sstpath="${NSST_SOURCE_DIR}"
+       CDATEm1d=$(${NDATE} -24 "${CDATE}")
+       CDATEm2d=$(${NDATE} -48 "${CDATE}")
+       ssttimestr=$(date -d "${CDATEm1d:0:8} ${CDATEm1d:8:2}" +%y%j00000000)
+       ssttimestr2=$(date -d "${CDATEm2d:0:8} ${CDATEm2d:8:2}" +%y%j00000000)
+       if [[ -r "${sstpath}/${ssttimestr}" ]]; then
+         cp "${sstpath}/${ssttimestr}" RGT_SST.grib2
+       elif [[ -r "${sstpath}/${ssttimestr2}" ]]; then
+         cp "${sstpath}/${ssttimestr2}" RGT_SST.grib2
+       else
+         echo " WARNING: cannot find RGT SST data for cycle ${cyc}"
+         exit 0
+       fi
+       ln -s ../mpasout.nc .
+       YYYYMMDDstr=${CDATE:0:8}
+       HHstr=${CDATE:8:2}
+       sfclakepath="${LAKE_SOURCE_DIR}"
+       sfclakefile="${sfclakepath}/rrfs.${YYYYMMDDstr}/${HHstr}/forecast/INPUT/sfc_data.nc"
+       if [[ -r "${sfclakefile}" ]]; then
+         ln -s "${sfclakefile}" sfc_data.nc
+       fi
+       ${cpreq} "${EXECrrfs}"/process_update_sst.exe .
+       ${MPI_RUN_CMD} ./process_update_sst.exe
+       export err=$?
+       if (( err != 0 )); then
+         echo "prep_ic failed with error code ${err}"
+         err_exit
+       fi
+     fi
+  done
+fi
   echo "prep_ic completed successfully"
   touch "${umbrella_prep_ic_mem}"/prep_ic.done
 fi
