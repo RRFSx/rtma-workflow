@@ -53,6 +53,7 @@ if [[ "${DO_RTMA^^}" == "TRUE" ]]; then
 fi
 physics_suite=${PHYSICS_SUITE:-'mesoscale_reference'}
 lsm_scheme=${LSM_SCHEME:-'sf_ruc'}
+nsoillevels=${NSOIL_LEVELS:-9}
 jedi_da=true #true
 
 pio_num_iotasks=${NODES}
