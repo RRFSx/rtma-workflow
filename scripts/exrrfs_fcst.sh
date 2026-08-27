@@ -55,6 +55,7 @@ physics_suite=${PHYSICS_SUITE:-'mesoscale_reference'}
 lsm_scheme=${LSM_SCHEME:-'sf_ruc'}
 nsoillevels=${NSOIL_LEVELS:-9}
 jedi_da=true #true
+do_sppt=${DO_SPPT:-'false'}
 
 pio_num_iotasks=${NODES}
 pio_stride=${PPN}
@@ -129,10 +130,8 @@ fi
 for fhr in ${mpasout_all[@]}; do
   CDATEp=$( ${NDATE} "${fhr}" "${CDATE}" )
   timestr=$(date -d "${CDATEp:0:8} ${CDATEp:8:2}" +%Y-%m-%d_%H.%M.%S)
-  if [[ "${DO_SPINUP:-FALSE}" != "TRUE" ]];  then
-    ln -snf "${UMBRELLA_FCST_DATA}/mpasout.${timestr}.nc" "${DATA}/"
-    ln -snf "${UMBRELLA_FCST_DATA}/mpasout.${timestr}.nc.done" "${DATA}/"
-  fi
+  ln -snf "${UMBRELLA_FCST_DATA}/mpasout.${timestr}.nc" "${DATA}/"
+  ln -snf "${UMBRELLA_FCST_DATA}/mpasout.${timestr}.nc.done" "${DATA}/"
 done
 #
 # if DO_RTMA, regenerate streams.atmosphere, and link the first time step history/diag files as f000 files

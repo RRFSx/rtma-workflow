@@ -52,6 +52,11 @@ def fcst(xmlFile, expdir, do_ensemble=False, dcEnsGrpInfo=None, do_spinup=False)
     if do_spinup:
         dcTaskEnv['DO_SPINUP'] = "TRUE"
 
+    if os.getenv('DO_SPPT', 'FALSE').upper() == "TRUE":
+        dcTaskEnv['DO_SPPT'] = "true"
+    else:
+        dcTaskEnv['DO_SPPT'] = "false"
+
     if os.getenv('DO_CHEMISTRY', 'FALSE').upper() == "TRUE":
         dcTaskEnv['EBB_DCYCLE'] = os.getenv('EBB_DCYCLE', 0)
         dcTaskEnv['CHEM_GROUPS'] = os.getenv('CHEM_GROUPS', 'smoke')
@@ -111,7 +116,10 @@ def fcst(xmlFile, expdir, do_ensemble=False, dcEnsGrpInfo=None, do_spinup=False)
     if os.getenv("DO_JEDI", "FALSE").upper() == "TRUE":
         do_da = True
         if os.getenv("DO_ENSEMBLE", "FALSE").upper() == "TRUE":
-            jedidep = f'\n    <taskdep task="getkf_solver"/>'
+            if os.getenv("GETKF_ONESTEP", "TRUE").upper() == "FALSE":
+                jedidep = f'\n    <taskdep task="getkf_solver"/>'
+            else:
+                jedidep = f'\n    <taskdep task="getkf"/>'
         elif do_spinup:
             jedidep = f'\n    <taskdep task="jedivar_spinup"/>'
         else:
